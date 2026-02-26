@@ -3,7 +3,8 @@
  * CONFIG
  * ===============================
  */
-const SPREADSHEET_ID = "1lIJhyNlLL2Iee6LBAp3yMjzkYJ1JsII4qbd7XklSEhM";
+const SPREADSHEET_ID =
+"1lIJhyNlLL2Iee6LBAp3yMjzkYJ1JsII4qbd7XklSEhM";
 
 
 /**
@@ -22,10 +23,11 @@ function doPost(e) {
 
 /**
  * ===============================
- * ROUTER SYSTEM
+ * ROUTER
  * ===============================
  */
 function route(e, method) {
+
   try {
 
     const path = e.parameter.path || "";
@@ -35,31 +37,26 @@ function route(e, method) {
       body = JSON.parse(e.postData.contents);
     }
 
-    /**
-     * ========= PRESENCE =========
-     */
+    /** ========= PRESENCE ========= */
 
-    if (method === "POST" && path === "presence/qr/generate") {
+    if (method === "POST" && path === "presence/qr/generate")
       return generateQR(body);
-    }
 
-    if (method === "POST" && path === "presence/checkin") {
+    if (method === "POST" && path === "presence/checkin")
       return checkinPresence(body);
-    }
 
-    if (method === "GET" && path === "presence/status") {
+    if (method === "GET" && path === "presence/status")
       return getPresenceStatus(e.parameter);
-    }
 
     return jsonResponse({
-      ok: false,
-      error: "route_not_found"
+      ok:false,
+      error:"route_not_found"
     });
 
-  } catch (err) {
+  } catch(err) {
     return jsonResponse({
-      ok: false,
-      error: err.message
+      ok:false,
+      error:err.message
     });
   }
 }
@@ -67,10 +64,10 @@ function route(e, method) {
 
 /**
  * ===============================
- * DATABASE HELPER
+ * SHEET HELPER
  * ===============================
  */
-function getSheet(name) {
+function getSheet(name){
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   return ss.getSheetByName(name);
 }
@@ -81,13 +78,13 @@ function getSheet(name) {
  * TIME HELPER
  * ===============================
  */
-function nowISO() {
+function nowISO(){
   return new Date().toISOString();
 }
 
-function addMinutesISO(minutes) {
+function addMinutesISO(min){
   const d = new Date();
-  d.setMinutes(d.getMinutes() + minutes);
+  d.setMinutes(d.getMinutes()+min);
   return d.toISOString();
 }
 
@@ -97,16 +94,16 @@ function addMinutesISO(minutes) {
  * TOKEN GENERATOR
  * ===============================
  */
-function generateToken() {
+function generateToken(){
 
   const chars =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
-  let result = "TKN-";
+  let result="TKN-";
 
-  for (let i = 0; i < 6; i++) {
-    result += chars.charAt(
-      Math.floor(Math.random() * chars.length)
+  for(let i=0;i<6;i++){
+    result+=chars.charAt(
+      Math.floor(Math.random()*chars.length)
     );
   }
 
@@ -116,17 +113,17 @@ function generateToken() {
 
 /**
  * ===============================
- * MODULE 1
- * GENERATE QR TOKEN
+ * STEP 5
+ * GENERATE QR
  * ===============================
  */
-function generateQR(body) {
+function generateQR(body){
 
-  const sheet = getSheet("tokens");
+  const sheet=getSheet("tokens");
 
-  const qr_token = generateToken();
-  const created_at = nowISO();
-  const expires_at = addMinutesISO(1);
+  const qr_token=generateToken();
+  const created_at=nowISO();
+  const expires_at=addMinutesISO(1);
 
   sheet.appendRow([
     qr_token,
@@ -137,8 +134,8 @@ function generateQR(body) {
   ]);
 
   return jsonResponse({
-    ok: true,
-    data: {
+    ok:true,
+    data:{
       qr_token,
       expires_at
     }
@@ -148,34 +145,118 @@ function generateQR(body) {
 
 /**
  * ===============================
- * TEMP (STEP 6 NEXT)
+ * STEP 6
+ * CHECKIN PRESENCE
  * ===============================
  */
-function checkinPresence(body) {
-  return jsonResponse({
-    ok: true,
-    data: {
-      message: "checkin endpoint ready"
-    }
-  });
-}
+function checkinPresence(body){
 
-function getPresenceStatus(params) {
-  return jsonResponse({
-    ok: true,
-    data: {
-      message: "status endpoint ready"
+  const tokenSheet=getSheet("tokens");
+  const presenceSheet=getSheet("presence");
+
+  const tokenData=tokenSheet
+    .getDataRange()
+    .getValues();
+
+  const qr_token=body.qr_token;
+  const student_id=body.student_id;
+
+  let tokenRow=null;
+
+  // ==== FIND TOKEN ====
+  for(let i=1;i<tokenData.length;i++){
+    if(tokenData[i][0]===qr_token){
+      tokenRow=tokenData[i];
+      break;
     }
+  }
+
+  if(!tokenRow){
+    return jsonResponse({
+      ok:false,
+      error:"invalid_token"
+    });
+  }
+
+  const course_id=tokenRow[1];
+  const session_id=tokenRow[2];
+  const expires_at=new Date(tokenRow[3]);
+
+  // ==== EXPIRED CHECK ====
+  if(new Date()>expires_at){
+    return jsonResponse({
+      ok:false,
+      error:"token_expired"
+    });
+  }
+
+  // ==== DOUBLE CHECKIN ====
+  const presenceData=
+    presenceSheet.getDataRange().getValues();
+
+  for(let i=1;i<presenceData.length;i++){
+    if(
+      presenceData[i][0]===student_id &&
+      presenceData[i][1]===qr_token
+    ){
+      return jsonResponse({
+        ok:false,
+        error:"already_checkin"
+      });
+    }
+  }
+
+  // ==== SAVE CHECKIN ====
+  presenceSheet.appendRow([
+    student_id,
+    qr_token,
+    course_id,
+    session_id,
+    nowISO()
+  ]);
+
+  return jsonResponse({
+    ok:true,
+    message:"checkin_success"
   });
 }
 
 
 /**
  * ===============================
- * STANDARD RESPONSE
+ * STATUS
  * ===============================
  */
-function jsonResponse(obj) {
+function getPresenceStatus(params){
+
+  const sheet=getSheet("presence");
+  const data=sheet.getDataRange().getValues();
+
+  for(let i=1;i<data.length;i++){
+    if(
+      data[i][0]===params.student_id &&
+      data[i][1]===params.qr_token
+    ){
+      return jsonResponse({
+        ok:true,
+        checked_in:true
+      });
+    }
+  }
+
+  return jsonResponse({
+    ok:true,
+    checked_in:false
+  });
+}
+
+
+/**
+ * ===============================
+ * RESPONSE
+ * ===============================
+ */
+function jsonResponse(obj){
   return ContentService
     .createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);

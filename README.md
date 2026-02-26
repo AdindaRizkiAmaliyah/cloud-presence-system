@@ -1,3 +1,3 @@
 # cloud-presence-system
 
-BASE_URL= https://script.google.com/macros/s/AKfycbzlnE8AvGszgY0vLKoky90GVxU14kNwpOF-6ky5zx4sUr1_GTY0BGvpcjJNBR9yFRaP/exec
+BASE_URL= https://script.google.com/macros/s/AKfycbwoDhBfO9VTKNlX4Q52NFWWxXTfZ_owZW_m4oh4W14MiIqG9DgvIV5ZPbi2JvhXvh50/exec
