@@ -1,0 +1,3 @@
+const CONFIG = {
+  SPREADSHEET_ID: "1lIJhyNlLL2Iee6LBAp3yMjzkYJ1JsII4qbd7XklSEhM"
+};
