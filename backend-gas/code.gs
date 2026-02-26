@@ -117,13 +117,13 @@ function generateToken(){
  * GENERATE QR
  * ===============================
  */
-function generateQR(body){
+function generateQR(body) {
 
-  const sheet=getSheet("tokens");
+  const sheet = getSheet("tokens");
 
-  const qr_token=generateToken();
-  const created_at=nowISO();
-  const expires_at=addMinutesISO(1);
+  const qr_token = generateToken();
+  const created_at = nowISO();
+  const expires_at = addMinutesISO(1);
 
   sheet.appendRow([
     qr_token,
@@ -133,10 +133,16 @@ function generateQR(body){
     created_at
   ]);
 
+  // ✅ QR IMAGE
+  const qr_image =
+    "https://api.qrserver.com/v1/create-qr-code/?size=300x300&data="
+    + encodeURIComponent(qr_token);
+
   return jsonResponse({
-    ok:true,
-    data:{
+    ok: true,
+    data: {
       qr_token,
+      qr_image,
       expires_at
     }
   });
